@@ -1,43 +1,12 @@
-/*******************************************************************************
- * Copyright (c) 2015 Thomas Telkamp and Matthijs Kooijman
- *
- * Permission is hereby granted, free of charge, to anyone
- * obtaining a copy of this document and accompanying files,
- * to do whatever they want with them without any restriction,
- * including, but not limited to, copying, modification and redistribution.
- * NO WARRANTY OF ANY KIND IS PROVIDED.
- *
- * This example sends a valid LoRaWAN packet with payload "Hello,
- * world!", using frequency and encryption settings matching those of
- * the (early prototype version of) The Things Network.
- *
- * Note: LoRaWAN per sub-band duty-cycle limitation is enforced (1% in g1,
- *  0.1% in g2).
- *
- * Change DEVADDR to a unique address!
- * See http://thethingsnetwork.org/wiki/AddressSpace
- *
- * Do not forget to define the radio type correctly in config.h.
- *
- *******************************************************************************/
-
 #include <lmic.h>
 #include <hal/hal.h>
 #include <SPI.h>
+#include <U8x8lib.h>
 
-// LoRaWAN NwkSKey, network session key
-// This is the default Semtech key, which is used by the prototype TTN
-// network initially.
-static const PROGMEM u1_t NWKSKEY[16] ={ 0x87, 0xF0, 0x8C, 0x51, 0xE5, 0x7D, 0xB3, 0xE1, 0x06, 0xAA, 0x0A, 0x16, 0x1A, 0xD9, 0xAF, 0xE1 };
 
-// LoRaWAN AppSKey, application session key
-// This is the default Semtech key, which is used by the prototype TTN
-// network initially.
-static const u1_t PROGMEM APPSKEY[16] = { 0xB7, 0xCE, 0xEA, 0xA3, 0x52, 0xA4, 0x33, 0x9E, 0x81, 0x45, 0xE9, 0x79, 0xEC, 0x27, 0x0C, 0xD2 };
-
-// LoRaWAN end-device address (DevAddr)
-// See http://thethingsnetwork.org/wiki/AddressSpace
-static const u4_t DEVADDR = 0x260115F0; // <-- Change this address for every node!
+static const PROGMEM u1_t NWKSKEY[16] ={ 0xA9, 0x09, 0x83, 0xD2, 0xEA, 0x23, 0x5D, 0xCF, 0x88, 0xCB, 0x4B, 0x92, 0x20, 0x96, 0x40, 0x0E };
+static const PROGMEM u1_t APPSKEY[16] = { 0xF0, 0xBA, 0xEC, 0x1C, 0x04, 0x30, 0x00, 0x23, 0xF1, 0x7A, 0x5C, 0xB4, 0xF4, 0x8C, 0x2F, 0x72 };
+static const u4_t DEVADDR = 0x26011F80; // <-- Change this address for every node!
 
 // These callbacks are only used in over-the-air activation, so they are
 // left empty here (we cannot leave them out completely unless
@@ -51,7 +20,7 @@ static osjob_t sendjob;
 
 // Schedule TX every this many seconds (might become longer due to duty
 // cycle limitations).
-const unsigned TX_INTERVAL = 60;
+const unsigned TX_INTERVAL = 3600;
 
 // Pin mapping
 const lmic_pinmap lmic_pins = {
@@ -60,6 +29,8 @@ const lmic_pinmap lmic_pins = {
   .rst = 14,
   .dio = {26, 33, 32}
 };
+//OLED Declaration 
+U8X8_SSD1306_128X64_NONAME_SW_I2C u8x8(/* clock=*/ 15, /* data=*/ 4, /* reset=*/ 16);
 
 void onEvent (ev_t ev) {
     Serial.print(os_getTime());
@@ -67,37 +38,48 @@ void onEvent (ev_t ev) {
     switch(ev) {
         case EV_SCAN_TIMEOUT:
             Serial.println(F("EV_SCAN_TIMEOUT"));
+            u8x8.drawString(0, 2, "EV_SCAN_TIMEOUT");
             break;
         case EV_BEACON_FOUND:
             Serial.println(F("EV_BEACON_FOUND"));
+            u8x8.drawString(0, 2, "EV_BEACON_FOUND");
             break;
         case EV_BEACON_MISSED:
             Serial.println(F("EV_BEACON_MISSED"));
+            u8x8.drawString(0, 2, "EV_BEACON_MISSED");
             break;
         case EV_BEACON_TRACKED:
             Serial.println(F("EV_BEACON_TRACKED"));
+            u8x8.drawString(0, 2, "EV_BEACON_TRACKED");
             break;
         case EV_JOINING:
             Serial.println(F("EV_JOINING"));
+            u8x8.drawString(0, 2, "EV_JOINING");
             break;
         case EV_JOINED:
             Serial.println(F("EV_JOINED"));
+            u8x8.drawString(0, 2, "EV_JOINED");
             break;
         case EV_RFU1:
             Serial.println(F("EV_RFU1"));
+            u8x8.drawString(0, 2, "EV_RFU1");
             break;
         case EV_JOIN_FAILED:
             Serial.println(F("EV_JOIN_FAILED"));
+            u8x8.drawString(0, 2, "EV_JOIN_FAILED");
             break;
         case EV_REJOIN_FAILED:
             Serial.println(F("EV_REJOIN_FAILED"));
+            u8x8.drawString(0, 2, "EV_REJOIN_FAILED");
             break;
             break;
         case EV_TXCOMPLETE:
             Serial.println(F("EV_TXCOMPLETE (includes waiting for RX windows)"));
+            u8x8.drawString(0, 2, "Data Sent");
             if(LMIC.dataLen) {
                 // data received in rx slot after tx
                 Serial.print(F("Data Received: "));
+                u8x8.drawString(0, 3, "Data Received: ");
                 Serial.write(LMIC.frame+LMIC.dataBeg, LMIC.dataLen);
                 Serial.println();
             }
@@ -106,22 +88,28 @@ void onEvent (ev_t ev) {
             break;
         case EV_LOST_TSYNC:
             Serial.println(F("EV_LOST_TSYNC"));
+            u8x8.drawString(0, 2, "EV_LOST_TSYNC");
             break;
         case EV_RESET:
             Serial.println(F("EV_RESET"));
+            u8x8.drawString(0, 2, "EV_RESET");
             break;
         case EV_RXCOMPLETE:
             // data received in ping slot
             Serial.println(F("EV_RXCOMPLETE"));
+            u8x8.drawString(0, 2, "EV_RXCOMPLETE");
             break;
         case EV_LINK_DEAD:
             Serial.println(F("EV_LINK_DEAD"));
+            u8x8.drawString(0, 2, "EV_LINK_DEAD");
             break;
         case EV_LINK_ALIVE:
             Serial.println(F("EV_LINK_ALIVE"));
+            u8x8.drawString(0, 2, "EV_LINK_ALIVE");
             break;
          default:
             Serial.println(F("Unknown event"));
+            u8x8.drawString(0, 2, "Unknown event");
             break;
     }
 }
@@ -130,17 +118,24 @@ void do_send(osjob_t* j){
     // Check if there is not a current TX/RX job running
     if (LMIC.opmode & OP_TXRXPEND) {
         Serial.println(F("OP_TXRXPEND, not sending"));
+        u8x8.drawString(0, 1, "OP_TXRXPEND, not sending");
     } else {
         // Prepare upstream data transmission at the next possible time.
         LMIC_setTxData2(1, mydata, sizeof(mydata)-1, 0);
         Serial.println(F("Packet queued"));
+        u8x8.drawString(0, 1, "Packet queued");
     }
     // Next TX is scheduled after TX_COMPLETE event.
 }
 
 void setup() {
+    //setup the display
+    u8x8.begin();
+    u8x8.setFont(u8x8_font_chroma48medium8_r);
+
     Serial.begin(115200);
     Serial.println(F("Starting"));
+    u8x8.drawString(0, 0, "WGLabz LoRa Test");
 
     #ifdef VCC_ENABLE
     // For Pinoccio Scout boards
