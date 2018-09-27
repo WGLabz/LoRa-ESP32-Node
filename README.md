@@ -45,3 +45,24 @@ void loop()
   delay(5000);
 }
 //
+--------------------------------------
+int buttonPin = 13;
+int ledPin=12;
+int lastState=0;
+void setup() {
+  Serial.begin(9600);
+  pinMode(buttonPin,INPUT_PULLUP);
+  pinMode(ledPin,OUTPUT);
+  digitalWrite(ledPin, HIGH);
+}
+void loop() {
+  if(!digitalRead(buttonPin)){
+      lastState=1;
+  }
+  if(lastState==1){
+      lastState=0;
+      Serial.println("Button Pressed");
+      digitalWrite(ledPin, !digitalRead(ledPin));
+      delay(1000);
+   }
+}
